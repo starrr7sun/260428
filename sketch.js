@@ -105,15 +105,28 @@ function draw() {
         }
         strokeWeight(4);
 
-        // 串接指定編號的關鍵點：0-4, 5-8, 9-12, 13-16, 17-20
-        let fingerParts = [[0, 4], [5, 8], [9, 12], [13, 16], [17, 20]];
+        // 取得攝影機原始解析度，這在手機上比 video.width 更準確
+        let vw = video.elt.videoWidth || 640;
+        let vh = video.elt.videoHeight || 480;
+
+        // 手指路徑
+        let fingerParts = [[0, 1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
         for (let part of fingerParts) {
-          for (let i = part[0]; i < part[1]; i++) {
-            let pt1 = hand.keypoints[i];
-            let pt2 = hand.keypoints[i + 1];
-            line(map(pt1.x, 0, video.width, 0, w), map(pt1.y, 0, video.height, 0, h), 
-                 map(pt2.x, 0, video.width, 0, w), map(pt2.y, 0, video.height, 0, h));
+          for (let i = 0; i < part.length - 1; i++) {
+            let pt1 = hand.keypoints[part[i]];
+            let pt2 = hand.keypoints[part[i+1]];
+            line(map(pt1.x, 0, vw, 0, w), map(pt1.y, 0, vh, 0, h), 
+                 map(pt2.x, 0, vw, 0, w), map(pt2.y, 0, vh, 0, h));
           }
+        }
+
+        // 關鍵修正：將各手指根部連接到手腕 (0號點)，這樣整隻手才會「串接起來」
+        let palmBase = [5, 9, 13, 17];
+        for (let target of palmBase) {
+            let pt1 = hand.keypoints[i];
+          let pt2 = hand.keypoints[target];
+          line(map(pt1.x, 0, vw, 0, w), map(pt1.y, 0, vh, 0, h), 
+               map(pt2.x, 0, vw, 0, w), map(pt2.y, 0, vh, 0, h));
         }
 
         for (let i = 0; i < hand.keypoints.length; i++) {
@@ -126,8 +139,8 @@ function draw() {
           }
 
           // 在翻轉座標系中，直接對應 0~video.width 到 0~w
-          let cx = map(keypoint.x, 0, video.width, 0, w);
-          let cy = map(keypoint.y, 0, video.height, 0, h);
+          let cx = map(keypoint.x, 0, vw, 0, w);
+          let cy = map(keypoint.y, 0, vh, 0, h);
 
           noStroke();
           circle(cx, cy, 16);
