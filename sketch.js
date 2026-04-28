@@ -21,13 +21,17 @@ function gotHands(results) {
 function setup() {
   // 產生全螢幕畫布
   createCanvas(windowWidth, windowHeight);
-  video = createCapture(VIDEO, { flipped: true });
-  // 修正手機瀏覽器相容性問題，確保影像能在網頁內播放
+  
+  video = createCapture(VIDEO);
+  video.size(640, 480);
+  // 必須加入 playsinline 屬性，iOS 才能在網頁內正常播放視訊
   video.elt.setAttribute('playsinline', '');
   video.hide();
 
-  // Start detecting hands
-  handPose.detectStart(video, gotHands);
+  // 關鍵修正：確保 iOS 視訊加載完成後才啟動手部偵測
+  video.elt.onloadeddata = () => {
+    handPose.detectStart(video, gotHands);
+  };
 }
 
 // 當視窗大小改變時，自動調整畫布大小
@@ -46,8 +50,12 @@ function draw() {
   let x = (width - w) / 2;
   let y = (height - h) / 2;
 
-  // 繪製影像到視窗中間
-  image(video, x, y, w, h);
+  // 繪製水平翻轉後的影像，以符合 ml5 的 flipped: true 設定
+  push();
+  translate(x + w, y); 
+  scale(-1, 1);
+  image(video, 0, 0, w, h);
+  pop();
 
   // Ensure at least one hand is detected
   if (hands.length > 0) {
@@ -66,8 +74,8 @@ function draw() {
 
           // 根據影像縮放與偏移位置，重新計算關鍵點的座標
           // 使用 videoWidth 確保在手機轉向時能取得正確的比例
-          let cx = map(keypoint.x, 0, video.width || 640, x, x + w);
-          let cy = map(keypoint.y, 0, video.height || 480, y, y + h);
+          let cx = map(keypoint.x, 0, video.elt.videoWidth || 640, x, x + w);
+          let cy = map(keypoint.y, 0, video.elt.videoHeight || 480, y, y + h);
 
           noStroke();
           circle(cx, cy, 16);
