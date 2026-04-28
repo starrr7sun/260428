@@ -8,6 +8,10 @@ let statusMsg = "正在初始化..."; // 用於儲存目前的狀態訊息
 let isModelLoaded = false;
 let webglSupported = false;
 
+// 預先定義手指結構，確保連線精準
+const FINGER_PARTS = [[0, 1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
+const PALM_BASE = [5, 9, 13, 17];
+
 // 檢查瀏覽器是否支援 WebGL
 function checkWebGL() {
   try {
@@ -54,9 +58,11 @@ function setup() {
   // 確保 iOS 視訊加載完成後才啟動手部偵測
   video.elt.onloadeddata = () => {
     statusMsg = "攝影機已就緒，開始偵測...";
-    if (handPose) {
+    if (handPose && isModelLoaded) {
       handPose.detectStart(video, (results) => {
-        statusMsg = "偵測運行中"; // 第一次偵測成功後更新狀態
+        if (statusMsg !== "偵測運行中") {
+          statusMsg = "偵測運行中";
+        }
         gotHands(results);
       });
     }
@@ -78,7 +84,11 @@ function draw() {
   textSize(16);
   textAlign(LEFT, TOP);
   text("系統狀態: " + statusMsg, 20, 20);
-  if (!webglSupported || !video) return;
+
+  // 效能與防錯檢查：確保 WebGL 支援且視訊已準備好數據
+  if (!webglSupported || !video || video.width === 0 || video.elt.readyState < 2) {
+    return;
+  }
 
   // 計算顯示影像的寬高 (整個畫布的 60%)
   let w = width * 0.6;
@@ -94,24 +104,48 @@ function draw() {
   image(video, 0, 0, w, h);
 
   // 將點的繪製放在同一個翻轉座標系中，確保點永遠跟著影像走
-  if (hands.length > 0) {
+  if (hands && hands.length > 0) {
     for (let hand of hands) {
-      if (hand.confidence > 0.1) {
-        for (let i = 0; i < hand.keypoints.length; i++) {
-          let keypoint = hand.keypoints[i];
+      if (hand.confidence > 0.1 && hand.keypoints) {
+        
+        // 1. 預先計算並儲存所有映射後的座標，確保線條與圓點完全對齊
+        let mappedPoints = [];
+        for (let kp of hand.keypoints) {
+          mappedPoints.push({
+            x: map(kp.x, 0, video.width, 0, w),
+            y: map(kp.y, 0, video.height, 0, h)
+          });
+        }
 
-          if (hand.handedness == "Left") {
-            fill(255, 0, 255);
-          } else {
-            fill(255, 255, 0);
+        // 設定顏色（左手桃紅、右手黃色）
+        let c = hand.handedness === "Left" ? color(255, 0, 255) : color(255, 255, 0);
+
+        // 2. 繪製骨架連線
+        stroke(c);
+        strokeWeight(4);
+        noFill();
+
+        // 繪製五指連線
+        for (let part of FINGER_PARTS) {
+          for (let i = 0; i < part.length - 1; i++) {
+            let p1 = mappedPoints[part[i]];
+            let p2 = mappedPoints[part[i + 1]];
+            line(p1.x, p1.y, p2.x, p2.y);
           }
+        }
 
-          // 在翻轉座標系中，直接對應 0~video.width 到 0~w
-          let cx = map(keypoint.x, 0, video.width, 0, w);
-          let cy = map(keypoint.y, 0, video.height, 0, h);
+        // 繪製手掌基部連線 (將手指根部連回手腕 0 號點)
+        let wrist = mappedPoints[0];
+        for (let b of PALM_BASE) {
+          let pBase = mappedPoints[b];
+          line(wrist.x, wrist.y, pBase.x, pBase.y);
+        }
 
-          noStroke();
-          circle(cx, cy, 16);
+        // 3. 繪製關節圓點 (放在線條之後繪製，圓點才會在最上層)
+        noStroke();
+        fill(c);
+        for (let pt of mappedPoints) {
+          circle(pt.x, pt.y, 12);
         }
       }
     }
