@@ -19,10 +19,11 @@ function gotHands(results) {
 }
 
 function setup() {
-  createCanvas(640, 480);
   // 產生全螢幕畫布
   createCanvas(windowWidth, windowHeight);
   video = createCapture(VIDEO, { flipped: true });
+  // 修正手機瀏覽器相容性問題，確保影像能在網頁內播放
+  video.elt.setAttribute('playsinline', '');
   video.hide();
 
   // Start detecting hands
@@ -35,7 +36,6 @@ function windowResized() {
 }
 
 function draw() {
-  image(video, 0, 0);
   // 設定背景顏色為 e7c6ff
   background('#e7c6ff');
 
@@ -65,11 +65,11 @@ function draw() {
           }
 
           // 根據影像縮放與偏移位置，重新計算關鍵點的座標
-          let cx = map(keypoint.x, 0, video.width, x, x + w);
-          let cy = map(keypoint.y, 0, video.height, y, y + h);
+          // 使用 videoWidth 確保在手機轉向時能取得正確的比例
+          let cx = map(keypoint.x, 0, video.width || 640, x, x + w);
+          let cy = map(keypoint.y, 0, video.height || 480, y, y + h);
 
           noStroke();
-          circle(keypoint.x, keypoint.y, 16);
           circle(cx, cy, 16);
         }
       }
