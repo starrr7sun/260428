@@ -24,8 +24,8 @@ function preload() {
     statusMsg = "錯誤：此裝置不支援 WebGL，無法執行辨識。";
     return;
   }
-  // 初始化模型，並加入回呼函數確認載入成功
-  handPose = ml5.handPose({ flipped: true }, () => {
+  // 初始化模型 (不在此翻轉座標，我們在畫布上統一翻轉)
+  handPose = ml5.handPose({}, () => {
     isModelLoaded = true;
     statusMsg = "模型載入成功，等待攝影機...";
   });
@@ -90,29 +90,25 @@ function draw() {
   // 繪製水平翻轉後的影像，以符合 ml5 的 flipped: true 設定
   push();
   translate(x + w, y); 
-  scale(-1, 1);
+  scale(-1, 1); // 水平翻轉
   image(video, 0, 0, w, h);
-  pop();
 
-  // Ensure at least one hand is detected
+  // 將點的繪製放在同一個翻轉座標系中，確保點永遠跟著影像走
   if (hands.length > 0) {
     for (let hand of hands) {
       if (hand.confidence > 0.1) {
-        // Loop through keypoints and draw circles
         for (let i = 0; i < hand.keypoints.length; i++) {
           let keypoint = hand.keypoints[i];
 
-          // Color-code based on left or right hand
           if (hand.handedness == "Left") {
             fill(255, 0, 255);
           } else {
             fill(255, 255, 0);
           }
 
-          // 根據影像縮放與偏移位置，重新計算關鍵點的座標
-          // 使用 videoWidth 確保在手機轉向時能取得正確的比例
-          let cx = map(keypoint.x, 0, video.elt.videoWidth || 640, x, x + w);
-          let cy = map(keypoint.y, 0, video.elt.videoHeight || 480, y, y + h);
+          // 在翻轉座標系中，直接對應 0~video.width 到 0~w
+          let cx = map(keypoint.x, 0, video.width, 0, w);
+          let cy = map(keypoint.y, 0, video.height, 0, h);
 
           noStroke();
           circle(cx, cy, 16);
@@ -120,4 +116,5 @@ function draw() {
       }
     }
   }
+  pop(); // 結束翻轉座標系
 }
