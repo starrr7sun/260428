@@ -4,10 +4,31 @@
 let video;
 let handPose;
 let hands = [];
+let statusMsg = "正在初始化..."; // 用於儲存目前的狀態訊息
+let isModelLoaded = false;
+let webglSupported = false;
+
+// 檢查瀏覽器是否支援 WebGL
+function checkWebGL() {
+  try {
+    let canvas = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+  } catch (e) {
+    return false;
+  }
+}
 
 function preload() {
-  // Initialize HandPose model with flipped video input
-  handPose = ml5.handPose({ flipped: true });
+  webglSupported = checkWebGL();
+  if (!webglSupported) {
+    statusMsg = "錯誤：此裝置不支援 WebGL，無法執行辨識。";
+    return;
+  }
+  // 初始化模型，並加入回呼函數確認載入成功
+  handPose = ml5.handPose({ flipped: true }, () => {
+    isModelLoaded = true;
+    statusMsg = "模型載入成功，等待攝影機...";
+  });
 }
 
 function mousePressed() {
@@ -22,15 +43,23 @@ function setup() {
   // 產生全螢幕畫布
   createCanvas(windowWidth, windowHeight);
   
+  if (!webglSupported) return;
+
   video = createCapture(VIDEO);
   video.size(640, 480);
   // 必須加入 playsinline 屬性，iOS 才能在網頁內正常播放視訊
   video.elt.setAttribute('playsinline', '');
   video.hide();
 
-  // 關鍵修正：確保 iOS 視訊加載完成後才啟動手部偵測
+  // 確保 iOS 視訊加載完成後才啟動手部偵測
   video.elt.onloadeddata = () => {
-    handPose.detectStart(video, gotHands);
+    statusMsg = "攝影機已就緒，開始偵測...";
+    if (handPose) {
+      handPose.detectStart(video, (results) => {
+        statusMsg = "偵測運行中"; // 第一次偵測成功後更新狀態
+        gotHands(results);
+      });
+    }
   };
 }
 
@@ -42,6 +71,14 @@ function windowResized() {
 function draw() {
   // 設定背景顏色為 e7c6ff
   background('#e7c6ff');
+
+  // 顯示目前的狀態訊息（方便在手機上偵錯）
+  fill(0);
+  noStroke();
+  textSize(16);
+  textAlign(LEFT, TOP);
+  text("系統狀態: " + statusMsg, 20, 20);
+  if (!webglSupported || !video) return;
 
   // 計算顯示影像的寬高 (整個畫布的 60%)
   let w = width * 0.6;
