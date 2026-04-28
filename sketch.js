@@ -19,6 +19,7 @@ function gotHands(results) {
 }
 
 function setup() {
+  createCanvas(640, 480);
   // 產生全螢幕畫布
   createCanvas(windowWidth, windowHeight);
   video = createCapture(VIDEO, { flipped: true });
@@ -34,6 +35,7 @@ function windowResized() {
 }
 
 function draw() {
+  image(video, 0, 0);
   // 設定背景顏色為 e7c6ff
   background('#e7c6ff');
 
@@ -67,6 +69,7 @@ function draw() {
           let cy = map(keypoint.y, 0, video.height, y, y + h);
 
           noStroke();
+          circle(keypoint.x, keypoint.y, 16);
           circle(cx, cy, 16);
         }
       }
