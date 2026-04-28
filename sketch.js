@@ -25,13 +25,14 @@ function checkWebGL() {
 function preload() {
   webglSupported = checkWebGL();
   if (!webglSupported) {
-    statusMsg = "錯誤：此裝置不支援 WebGL，無法執行辨識。";
+    statusMsg = "系統錯誤：此裝置不支援 WebGL，無法執行 AI 辨識。";
     return;
   }
+  statusMsg = "正在從雲端載入 ml5 手部辨識模型...";
   // 初始化模型 (不在此翻轉座標，我們在畫布上統一翻轉)
   handPose = ml5.handPose({}, () => {
     isModelLoaded = true;
-    statusMsg = "模型載入成功，等待攝影機...";
+    statusMsg = "模型載入完成！正在初始化攝影機...";
   });
 }
 
@@ -49,6 +50,7 @@ function setup() {
   
   if (!webglSupported) return;
 
+  statusMsg = "正在請求攝影機權限...";
   video = createCapture(VIDEO);
   video.size(640, 480);
   // 必須加入 playsinline 屬性，iOS 才能在網頁內正常播放視訊
@@ -57,7 +59,7 @@ function setup() {
 
   // 確保 iOS 視訊加載完成後才啟動手部偵測
   video.elt.onloadeddata = () => {
-    statusMsg = "攝影機已就緒，開始偵測...";
+    statusMsg = "攝影機已連線，準備啟動偵測...";
     if (handPose && isModelLoaded) {
       handPose.detectStart(video, (results) => {
         if (statusMsg !== "偵測運行中") {
@@ -81,12 +83,21 @@ function draw() {
   // 顯示目前的狀態訊息（方便在手機上偵錯）
   fill(0);
   noStroke();
-  textSize(16);
+  textSize(18);
   textAlign(LEFT, TOP);
+  
+  // 加入簡單的背景框讓文字更清楚
+  fill(255, 200);
+  rect(15, 15, textWidth("系統狀態: " + statusMsg) + 10, 30, 5);
+  
+  fill(0);
   text("系統狀態: " + statusMsg, 20, 20);
 
   // 效能與防錯檢查：確保 WebGL 支援且視訊已準備好數據
   if (!webglSupported || !video || video.width === 0 || video.elt.readyState < 2) {
+    if (isModelLoaded && frameCount > 300 && statusMsg.includes("攝影機")) {
+      statusMsg = "警告：攝影機載入過久，請確認是否允許權限。";
+    }
     return;
   }
 
