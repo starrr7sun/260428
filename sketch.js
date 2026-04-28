@@ -97,6 +97,25 @@ function draw() {
   if (hands.length > 0) {
     for (let hand of hands) {
       if (hand.confidence > 0.1) {
+        // 根據 handedness 設定線條顏色
+        if (hand.handedness == "Left") {
+          stroke(255, 0, 255);
+        } else {
+          stroke(255, 255, 0);
+        }
+        strokeWeight(4);
+
+        // 串接指定編號的關鍵點：0-4, 5-8, 9-12, 13-16, 17-20
+        let fingerParts = [[0, 4], [5, 8], [9, 12], [13, 16], [17, 20]];
+        for (let part of fingerParts) {
+          for (let i = part[0]; i < part[1]; i++) {
+            let pt1 = hand.keypoints[i];
+            let pt2 = hand.keypoints[i + 1];
+            line(map(pt1.x, 0, video.width, 0, w), map(pt1.y, 0, video.height, 0, h), 
+                 map(pt2.x, 0, video.width, 0, w), map(pt2.y, 0, video.height, 0, h));
+          }
+        }
+
         for (let i = 0; i < hand.keypoints.length; i++) {
           let keypoint = hand.keypoints[i];
 
