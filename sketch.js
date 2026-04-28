@@ -105,45 +105,43 @@ function draw() {
         }
         strokeWeight(4);
 
-        // 取得攝影機原始解析度，這在手機上比 video.width 更準確
-        let vw = video.elt.videoWidth || 640;
-        let vh = video.elt.videoHeight || 480;
+        // 1. 預先計算並儲存所有映射後的座標，確保線條與圓點使用完全相同的數據
+        let mappedPoints = [];
+        for (let i = 0; i < hand.keypoints.length; i++) {
+          let kp = hand.keypoints[i];
+          let cx = map(kp.x, 0, video.width, 0, w);
+          let cy = map(kp.y, 0, video.height, 0, h);
+          mappedPoints.push({ x: cx, y: cy });
+        }
 
-        // 手指路徑
+        // 2. 繪製手指連線 (使用預算的 mappedPoints)
         let fingerParts = [[0, 1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]];
         for (let part of fingerParts) {
           for (let i = 0; i < part.length - 1; i++) {
-            let pt1 = hand.keypoints[part[i]];
-            let pt2 = hand.keypoints[part[i+1]];
-            line(map(pt1.x, 0, vw, 0, w), map(pt1.y, 0, vh, 0, h), 
-                 map(pt2.x, 0, vw, 0, w), map(pt2.y, 0, vh, 0, h));
+            let pt1 = mappedPoints[part[i]];
+            let pt2 = mappedPoints[part[i + 1]];
+            line(pt1.x, pt1.y, pt2.x, pt2.y);
           }
         }
 
-        // 關鍵修正：將各手指根部連接到手腕 (0號點)，這樣整隻手才會「串接起來」
+        // 3. 繪製掌心連線
         let palmBase = [5, 9, 13, 17];
         for (let target of palmBase) {
-          let pt1 = hand.keypoints[0];
-          let pt2 = hand.keypoints[target];
-          line(map(pt1.x, 0, vw, 0, w), map(pt1.y, 0, vh, 0, h), 
-               map(pt2.x, 0, vw, 0, w), map(pt2.y, 0, vh, 0, h));
+          let pt1 = mappedPoints[0];
+          let pt2 = mappedPoints[target];
+          line(pt1.x, pt1.y, pt2.x, pt2.y);
         }
 
-        for (let i = 0; i < hand.keypoints.length; i++) {
-          let keypoint = hand.keypoints[i];
-
+        // 4. 繪製圓點 (使用相同的 mappedPoints)
+        noStroke();
+        for (let i = 0; i < mappedPoints.length; i++) {
+          let pt = mappedPoints[i];
           if (hand.handedness == "Left") {
             fill(255, 0, 255);
           } else {
             fill(255, 255, 0);
           }
-
-          // 在翻轉座標系中，直接對應 0~video.width 到 0~w
-          let cx = map(keypoint.x, 0, vw, 0, w);
-          let cy = map(keypoint.y, 0, vh, 0, h);
-
-          noStroke();
-          circle(cx, cy, 16);
+          circle(pt.x, pt.y, 16);
         }
       }
     }
