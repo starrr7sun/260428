@@ -123,7 +123,7 @@ function draw() {
         // 關鍵修正：將各手指根部連接到手腕 (0號點)，這樣整隻手才會「串接起來」
         let palmBase = [5, 9, 13, 17];
         for (let target of palmBase) {
-            let pt1 = hand.keypoints[i];
+          let pt1 = hand.keypoints[0];
           let pt2 = hand.keypoints[target];
           line(map(pt1.x, 0, vw, 0, w), map(pt1.y, 0, vh, 0, h), 
                map(pt2.x, 0, vw, 0, w), map(pt2.y, 0, vh, 0, h));
